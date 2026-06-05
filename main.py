@@ -2,6 +2,7 @@ import time
 import random
 import customtkinter as ctk
 from funciones import esPar, resultadosATexto
+from PIL import Image
 
 #---pip install customtkinter---#
 
@@ -11,13 +12,30 @@ app.geometry("1200x800")
 
 
 buttons = {}            #clave=numero, valor=boton, son los 36 numeros
-botones_columna = []      #indice=columna, [indice] = boton, son los 3 de abajo
+botones_columna = []      #indice=columna, [indice]=boton, son los 3 de abajo
 
 numero_actual = None     #ultimo numero que salió en la ruleta
+ficha_actual = None      #ultimo ficha usada
 resultados = []       #numeros que salieron
 
-diccionarioDeApuestas = {}              #ejemplo= diccionarioDeApuestas["36"] = multiplicador, todo str, las claves son el nombre del boton
-listaDeApuestasActuales = []          #ejemplo= listaDeApuestasActuales[i] = (nombreApuesta, apuesta)
+diccionarioDeApuestas = {"0":36,
+                         "1\nS\nT\n\n12":3,
+                         "2\nN\nD\n\n12":3,
+                         "3\nR\nD\n\n12":3,
+                         "1\n\nT\nO\n\n18":2,
+                         "E\nV\nE\nN":2,
+                         "O\nD\nD":2,
+                         "19\n\nT\nO\n\n36":2,
+                         "RED":2,
+                         "BLACK":2}              #ejemplo= diccionarioDeApuestas["36"] = multiplicador, todo str, las claves son el nombre del boton
+
+diccionarioDeFichas = {"celeste":(1, 10),      #clave=color, valor=(numero_base, pesos_base)
+                       "violeta":(2, 20),      #creo que no hace falta porque todas multiplican x10
+                       "rojo":(5, 50),
+                       "amarilla":(10, 100)}              
+
+listaDeApuestasActuales = []          #ejemplo= listaDeApuestasActuales[i] = (nombreApuesta, apuesta, ficha, cantidadDeFichas)
+
 apuesta = 0          #apuesta total actual
 saldo = 0             #saldo actual
 
@@ -41,6 +59,10 @@ def spin():                            #para hacer la tirada
     global numero_actual
     global resultados
 
+    if(apuesta>saldo or saldo==0):           #falta apuesta==0
+        print("flaco...")
+        return 
+
     if(numero_actual!=None):
         resultados.append(numero_actual)
 
@@ -52,6 +74,15 @@ def spin():                            #para hacer la tirada
     else:
         button_resultados.configure(text=resultadosATexto(resultados[-10:]))
 
+def elegir_ficha(boton, color_borde):
+
+    global ficha_actual
+
+    if(ficha_actual!=None):
+        ficha_actual[1].configure(border_color="#8B4513")
+        
+    ficha_actual = (boton.cget("text"), boton)
+    boton.configure(border_color=color_borde)
 
 #..........................................................................FRAMES........................................................................................................................
 timba_frame = ctk.CTkFrame(app, corner_radius=10, fg_color="green")
@@ -116,6 +147,8 @@ for i in range(1, 37):
                            font=("Arial", 20))
     button.grid(row=fila_inicio, column=columna_inicio,padx=0, pady=0, sticky="nswe")
 
+    diccionarioDeApuestas[str(i)] = 36
+
     buttons[i] = button
 
     columna_inicio+=1
@@ -135,6 +168,7 @@ for i in range(3):
                            border_color="black",
                            font=("Arial", 20))
     button.grid(row=13, column=i,padx=0, pady=0, sticky="nswe")
+    diccionarioDeApuestas["2 TO 1"] = 3
     botones_columna.append(button)
 
 
@@ -145,10 +179,10 @@ button_1_18.grid(row=1, column=0, rowspan=2, padx=0, pady=0, sticky="nsew")
 button_even = ctk.CTkButton(apuestas_frame, text="E\nV\nE\nN", text_color="white", fg_color="green", hover_color="green", width=50, height=200, border_width=1, border_color="black", font=("Arial", 20))
 button_even.grid(row=3, column=0, rowspan=2, padx=0, pady=0, sticky="nsew")
 
-button_red = ctk.CTkButton(apuestas_frame, text="", text_color="white", fg_color="red", hover_color="red", width=50, height=200, border_width=1, border_color="black", font=("Arial", 20))
+button_red = ctk.CTkButton(apuestas_frame, text="RED", text_color="red", fg_color="red", hover_color="red", width=50, height=200, border_width=1, border_color="black", font=("Arial", 20))
 button_red.grid(row=5, column=0, rowspan=2, padx=0, pady=0, sticky="nsew")
 
-button_black = ctk.CTkButton(apuestas_frame, text="", text_color="white", fg_color="black", hover_color="black", width=50, height=200, border_width=1, border_color="black", font=("Arial", 20))
+button_black = ctk.CTkButton(apuestas_frame, text="BLACK", text_color="black", fg_color="black", hover_color="black", width=50, height=200, border_width=1, border_color="black", font=("Arial", 20))
 button_black.grid(row=7, column=0, rowspan=2, padx=0, pady=0, sticky="nsew")
 
 button_odd = ctk.CTkButton(apuestas_frame, text="O\nD\nD", text_color="white", fg_color="green", hover_color="green", width=50, height=200, border_width=1, border_color="black", font=("Arial", 20))
@@ -224,11 +258,63 @@ button_entry_saldo = ctk.CTkButton(opciones_frame,
                               text="Actualizar saldo", 
                               text_color="white", 
                               fg_color="black", 
-                              
                               border_width=1, 
                               border_color="grey",
                               width=140,
                               command=actualizar_saldo)
 button_entry_saldo.place(relx=0.6, rely=0.07)
+
+ficha_celeste_png = ctk.CTkImage(light_image=Image.open("imagenes/celeste.png"), size=(70,70))
+ficha_violeta_png = ctk.CTkImage(light_image=Image.open("imagenes/violeta.png"), size=(70,70))
+ficha_roja_png = ctk.CTkImage(light_image=Image.open("imagenes/roja.png"), size=(70,70))
+ficha_amarilla_png = ctk.CTkImage(light_image=Image.open("imagenes/amarilla.png"), size=(70,70))
+
+button_celeste = ctk.CTkButton(opciones_frame, 
+                              text="", 
+                              text_color="white", 
+                              fg_color="#8B4513",
+                              hover_color="#8B4513", 
+                              image=ficha_celeste_png,
+                              border_width=1, 
+                              border_color="#8B4513",
+                              width=30,
+                              command=lambda: elegir_ficha(button_celeste, "lightblue"))
+button_celeste.place(relx=0.55, rely=0.12)
+
+button_violeta = ctk.CTkButton(opciones_frame, 
+                              text="", 
+                              text_color="white", 
+                              fg_color="#8B4513",
+                              hover_color="#8B4513", 
+                              image=ficha_violeta_png,
+                              border_width=1, 
+                              border_color="#8B4513",
+                              width=30,
+                              command=lambda: elegir_ficha(button_violeta, "purple"))
+button_violeta.place(relx=0.76, rely=0.12)
+
+button_roja = ctk.CTkButton(opciones_frame, 
+                              text="", 
+                              text_color="white", 
+                              fg_color="#8B4513",
+                              hover_color="#8B4513", 
+                              image=ficha_roja_png,
+                              border_width=1, 
+                              border_color="#8B4513",
+                              width=30,
+                              command=lambda: elegir_ficha(button_roja, "red"))
+button_roja.place(relx=0.55, rely=0.22)
+
+button_amarilla = ctk.CTkButton(opciones_frame, 
+                              text="", 
+                              text_color="white", 
+                              fg_color="#8B4513",
+                              hover_color="#8B4513", 
+                              image=ficha_amarilla_png,
+                              border_width=1, 
+                              border_color="#8B4513",
+                              width=30,
+                              command=lambda: elegir_ficha(button_amarilla, "yellow"))
+button_amarilla.place(relx=0.76, rely=0.22)
 
 app.mainloop()
