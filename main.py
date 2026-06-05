@@ -18,23 +18,28 @@ numero_actual = None     #ultimo numero que salió en la ruleta
 ficha_actual = None      #ultimo ficha usada
 resultados = []       #numeros que salieron
 
-diccionarioDeApuestas = {"0":36,
-                         "1\nS\nT\n\n12":3,
-                         "2\nN\nD\n\n12":3,
-                         "3\nR\nD\n\n12":3,
-                         "1\n\nT\nO\n\n18":2,
-                         "E\nV\nE\nN":2,
-                         "O\nD\nD":2,
-                         "19\n\nT\nO\n\n36":2,
-                         "RED":2,
-                         "BLACK":2}              #ejemplo= diccionarioDeApuestas["36"] = multiplicador, todo str, las claves son el nombre del boton
+none_36 = (36,None)
+none_3 = (3, None)
+none_2 = (2, None)
+
+diccionarioDeApuestas = {"0":none_36,
+                         "1\nS\nT\n\n12":none_3,
+                         "2\nN\nD\n\n12":none_3,
+                         "3\nR\nD\n\n12":none_3,
+                         "1\n\nT\nO\n\n18":none_2,
+                         "E\nV\nE\nN":none_2,
+                         "O\nD\nD":none_2,
+                         "19\n\nT\nO\n\n36":none_2,
+                         "RED":none_2,
+                         "BLACK":none_2}              #ejemplo= diccionarioDeApuestas["36"] = (multiplicador, apuesta_actual), todo str, las claves son el nombre del boton
 
 diccionarioDeFichas = {"celeste":(1, 10),      #clave=color, valor=(numero_base, pesos_base)
                        "violeta":(2, 20),      #creo que no hace falta porque todas multiplican x10
-                       "rojo":(5, 50),
+                       "roja":(5, 50),
                        "amarilla":(10, 100)}              
 
-listaDeApuestasActuales = []          #ejemplo= listaDeApuestasActuales[i] = (nombreApuesta, apuesta, ficha, cantidadDeFichas)
+listaDeApuestasActuales = []          #ejemplo= listaDeApuestasActuales[i] = (nombreApuesta, apuesta, boton_apuesta), por si quiero tirar para atras una apuesta
+
 
 apuesta = 0          #apuesta total actual
 saldo = 0             #saldo actual
@@ -74,15 +79,59 @@ def spin():                            #para hacer la tirada
     else:
         button_resultados.configure(text=resultadosATexto(resultados[-10:]))
 
-def elegir_ficha(boton, color_borde):
+def elegir_ficha(boton, color_borde, nombre):
 
     global ficha_actual
 
     if(ficha_actual!=None):
         ficha_actual[1].configure(border_color="#8B4513")
-        
-    ficha_actual = (boton.cget("text"), boton)
+
+    ficha_actual = (nombre, boton)
     boton.configure(border_color=color_borde)
+
+def posicionar_ficha(boton):            #---------ARREGLAR-------------
+    
+    global ficha_actual
+
+    if(ficha_actual==None):    #si no elegiste ficha no jugas
+        return
+    
+    ficha = ficha_actual[0]   #valor de la ficha
+    futura_apuesta = diccionarioDeFichas[ficha][1]    #valor en pesos de la futura apuesta
+
+    if(apuesta+futura_apuesta>saldo):        #si la apuesta actual mas la futura es mayor al saldo no podes seguir metiendo fichas
+        return
+    
+    texto_boton = boton.cget("text")     #nombre de la apuesta
+    boton_apuesta = diccionarioDeApuestas[texto_boton][1]     #plata puesto sobre la apuesta
+
+    boton_ficha_plata = diccionarioDeFichas[ficha][1]
+
+    if(boton_apuesta==None):
+        boton_ficha_texto = diccionarioDeFichas[ficha][0]   #si nunca se aposto en ese lugar le pongo el numero inicial de la apuesta
+        diccionarioDeApuestas[texto_boton] = (diccionarioDeApuestas[texto_boton][0], boton_ficha_plata)
+    else:
+        boton_ficha_texto = (boton_apuesta//10) + diccionarioDeApuestas[texto_boton][0]    #si se aposto escribis el numero de ficha anterior mas el nuevo
+        diccionarioDeApuestas[texto_boton] = (diccionarioDeApuestas[texto_boton][0], boton_apuesta + diccionarioDeFichas[ficha][1]) 
+
+    boton_info = boton.grid_info()      #info del boton
+
+    boton_ficha = ctk.CTkButton(numeros_frame, 
+                           text=str(boton_ficha_texto), 
+                           text_color="white", 
+                           fg_color="orange", 
+                           hover_color="orange", 
+                           border_width=2, 
+                           border_color="black",
+                           font=("Arial", 20),
+                           width=30,
+                           height=30)
+    boton_ficha.grid(row=boton_info["row"], column=boton_info["column"])
+    boton_ficha.lift()
+
+    listaDeApuestasActuales.append((texto_boton, futura_apuesta, boton_ficha))
+    
+
 
 #..........................................................................FRAMES........................................................................................................................
 timba_frame = ctk.CTkFrame(app, corner_radius=10, fg_color="green")
@@ -127,7 +176,8 @@ button_0 = ctk.CTkButton(numeros_frame,
                          fg_color="green", 
                          hover_color="green", 
                          border_width=2, 
-                         border_color="black", font=("Arial", 20))
+                         border_color="black", font=("Arial", 20),
+                         command=lambda: posicionar_ficha(button_0))
 button_0.grid(row=0, column=0, columnspan=3, sticky="nswe")
 
 #--------numeros (sin el 0)---------------------#
@@ -147,7 +197,7 @@ for i in range(1, 37):
                            font=("Arial", 20))
     button.grid(row=fila_inicio, column=columna_inicio,padx=0, pady=0, sticky="nswe")
 
-    diccionarioDeApuestas[str(i)] = 36
+    diccionarioDeApuestas[str(i)] = none_36
 
     buttons[i] = button
 
@@ -168,7 +218,7 @@ for i in range(3):
                            border_color="black",
                            font=("Arial", 20))
     button.grid(row=13, column=i,padx=0, pady=0, sticky="nswe")
-    diccionarioDeApuestas["2 TO 1"] = 3
+    diccionarioDeApuestas["2 TO 1"] = none_3
     botones_columna.append(button)
 
 
@@ -252,8 +302,6 @@ button_resultados.place(relx=0.05, rely=0.10)
 entry_saldo = ctk.CTkEntry(opciones_frame, placeholder_text="Meté plata...")
 entry_saldo.place(relx=0.6, rely=0.03)
 
-
-
 button_entry_saldo = ctk.CTkButton(opciones_frame, 
                               text="Actualizar saldo", 
                               text_color="white", 
@@ -263,6 +311,8 @@ button_entry_saldo = ctk.CTkButton(opciones_frame,
                               width=140,
                               command=actualizar_saldo)
 button_entry_saldo.place(relx=0.6, rely=0.07)
+
+#---------------------------------------------------------FICHAS------------------------------------------------------------------------------#
 
 ficha_celeste_png = ctk.CTkImage(light_image=Image.open("imagenes/celeste.png"), size=(70,70))
 ficha_violeta_png = ctk.CTkImage(light_image=Image.open("imagenes/violeta.png"), size=(70,70))
@@ -278,7 +328,7 @@ button_celeste = ctk.CTkButton(opciones_frame,
                               border_width=1, 
                               border_color="#8B4513",
                               width=30,
-                              command=lambda: elegir_ficha(button_celeste, "lightblue"))
+                              command=lambda: elegir_ficha(button_celeste, "lightblue", "celeste"))
 button_celeste.place(relx=0.55, rely=0.12)
 
 button_violeta = ctk.CTkButton(opciones_frame, 
@@ -290,7 +340,7 @@ button_violeta = ctk.CTkButton(opciones_frame,
                               border_width=1, 
                               border_color="#8B4513",
                               width=30,
-                              command=lambda: elegir_ficha(button_violeta, "purple"))
+                              command=lambda: elegir_ficha(button_violeta, "purple", "violeta"))
 button_violeta.place(relx=0.76, rely=0.12)
 
 button_roja = ctk.CTkButton(opciones_frame, 
@@ -302,7 +352,7 @@ button_roja = ctk.CTkButton(opciones_frame,
                               border_width=1, 
                               border_color="#8B4513",
                               width=30,
-                              command=lambda: elegir_ficha(button_roja, "red"))
+                              command=lambda: elegir_ficha(button_roja, "red", "roja"))
 button_roja.place(relx=0.55, rely=0.22)
 
 button_amarilla = ctk.CTkButton(opciones_frame, 
@@ -314,7 +364,7 @@ button_amarilla = ctk.CTkButton(opciones_frame,
                               border_width=1, 
                               border_color="#8B4513",
                               width=30,
-                              command=lambda: elegir_ficha(button_amarilla, "yellow"))
+                              command=lambda: elegir_ficha(button_amarilla, "yellow", "amarilla"))
 button_amarilla.place(relx=0.76, rely=0.22)
 
 app.mainloop()
