@@ -15,12 +15,12 @@ buttons = {}            #clave=numero, valor=boton, son los 36 numeros
 botones_columna = []      #indice=columna, [indice]=boton, son los 3 de abajo
 
 numero_actual = None     #ultimo numero que salió en la ruleta
-ficha_actual = None      #ultimo ficha usada
+ficha_actual = None      #ultimo ficha usada, (nombre, boton)
 resultados = []       #numeros que salieron
 
-none_36 = (36,None)
-none_3 = (3, None)
-none_2 = (2, None)
+none_36 = (36, 0)
+none_3 = (3, 0)
+none_2 = (2, 0)
 
 diccionarioDeApuestas = {"0":none_36,
                          "1\nS\nT\n\n12":none_3,
@@ -31,15 +31,14 @@ diccionarioDeApuestas = {"0":none_36,
                          "O\nD\nD":none_2,
                          "19\n\nT\nO\n\n36":none_2,
                          "RED":none_2,
-                         "BLACK":none_2}              #ejemplo= diccionarioDeApuestas["36"] = (multiplicador, apuesta_actual), todo str, las claves son el nombre del boton
+                         "BLACK":none_2}              #ejemplo= diccionarioDeApuestas["36"] = (multiplicador, apuesta_actual sin multiplicador), todo str, las claves son el nombre del boton
 
-diccionarioDeFichas = {"celeste":(1, 10),      #clave=color, valor=(numero_base, pesos_base)
-                       "violeta":(2, 20),      #creo que no hace falta porque todas multiplican x10
-                       "roja":(5, 50),
-                       "amarilla":(10, 100)}              
+diccionarioDeFichas = {"celeste":1,      #clave=color, valor=numero_base       todos se multiplican por diez despues para saber la apuesta
+                       "violeta":2,      
+                       "roja":5,
+                       "amarilla":10}              
 
 listaDeApuestasActuales = []          #ejemplo= listaDeApuestasActuales[i] = (nombreApuesta, apuesta, boton_apuesta), por si quiero tirar para atras una apuesta
-
 
 apuesta = 0          #apuesta total actual
 saldo = 0             #saldo actual
@@ -89,35 +88,36 @@ def elegir_ficha(boton, color_borde, nombre):
     ficha_actual = (nombre, boton)
     boton.configure(border_color=color_borde)
 
-def posicionar_ficha(boton):            #---------ARREGLAR-------------
+def posicionar_ficha(boton, frame):            #---------ARREGLAR-------------
     
     global ficha_actual
+    global apuesta
+    global saldo
 
     if(ficha_actual==None):    #si no elegiste ficha no jugas
         return
     
-    ficha = ficha_actual[0]   #valor de la ficha
-    futura_apuesta = diccionarioDeFichas[ficha][1]    #valor en pesos de la futura apuesta
+    ficha = ficha_actual[0]   #nombre de la ficha en string
+    futura_apuesta = diccionarioDeFichas[ficha] * 10    #valor en pesos de la futura apuesta
 
     if(apuesta+futura_apuesta>saldo):        #si la apuesta actual mas la futura es mayor al saldo no podes seguir metiendo fichas
         return
     
+    apuesta += futura_apuesta     #apuesto
+    button_apuesta.configure(text="$ "+str(apuesta))   #recargo la apuesta
+
     texto_boton = boton.cget("text")     #nombre de la apuesta
-    boton_apuesta = diccionarioDeApuestas[texto_boton][1]     #plata puesto sobre la apuesta
+    boton_apuesta = diccionarioDeApuestas[texto_boton][1]     #plata puesto sobre la apuesta, None o algo anterior
+    boton_ficha_texto = diccionarioDeFichas[ficha]    #texto de la ficha, es el numero
 
-    boton_ficha_plata = diccionarioDeFichas[ficha][1]
-
-    if(boton_apuesta==None):
-        boton_ficha_texto = diccionarioDeFichas[ficha][0]   #si nunca se aposto en ese lugar le pongo el numero inicial de la apuesta
-        diccionarioDeApuestas[texto_boton] = (diccionarioDeApuestas[texto_boton][0], boton_ficha_plata)
-    else:
-        boton_ficha_texto = (boton_apuesta//10) + diccionarioDeApuestas[texto_boton][0]    #si se aposto escribis el numero de ficha anterior mas el nuevo
-        diccionarioDeApuestas[texto_boton] = (diccionarioDeApuestas[texto_boton][0], boton_apuesta + diccionarioDeFichas[ficha][1]) 
+       
+    nuevo_texto = str(int(boton_ficha_texto) + boton_apuesta)  #anterior + el nuevo
+    diccionarioDeApuestas[texto_boton] = (diccionarioDeApuestas[texto_boton][0], int(nuevo_texto)) 
 
     boton_info = boton.grid_info()      #info del boton
 
-    boton_ficha = ctk.CTkButton(numeros_frame, 
-                           text=str(boton_ficha_texto), 
+    boton_ficha = ctk.CTkButton(frame, 
+                           text=nuevo_texto, 
                            text_color="white", 
                            fg_color="orange", 
                            hover_color="orange", 
@@ -131,7 +131,31 @@ def posicionar_ficha(boton):            #---------ARREGLAR-------------
 
     listaDeApuestasActuales.append((texto_boton, futura_apuesta, boton_ficha))
     
+def clear_apuesta(decision):     #decision=True elimina el ultimo, decision=False elimina todas
 
+    global apuesta
+    global listaDeApuestasActuales
+    global diccionarioDeApuestas
+
+    if(len(listaDeApuestasActuales)==0):
+        return
+    
+    i = len(listaDeApuestasActuales)-1
+    while(i>=0):
+        
+        ultima_apuesta = listaDeApuestasActuales.pop()     #elimino la apuesta
+        nombre_apuesta = ultima_apuesta[0]      #nombre de la apuesta
+        apuesta -= ultima_apuesta[1]          #resto la ultima apuesta
+        ultima_apuesta[2].destroy()          #elimino el boton
+        button_apuesta.configure(text="$ "+str(apuesta))      #actualiza el grafico
+        dict_apuesta = diccionarioDeApuestas[nombre_apuesta][1]      #ultimo valor guardado en la apuesta
+        nuevo_valor = max(0, dict_apuesta-ultima_apuesta[1])    
+
+        diccionarioDeApuestas[nombre_apuesta] = (diccionarioDeApuestas[nombre_apuesta][0], nuevo_valor)
+        
+        if(decision):
+            return
+        i -= 1
 
 #..........................................................................FRAMES........................................................................................................................
 timba_frame = ctk.CTkFrame(app, corner_radius=10, fg_color="green")
@@ -166,7 +190,6 @@ for c in range(2):
     apuestas_frame.grid_columnconfigure(c, weight=1)
 
 #......................................................................BOTONES........................................................................................................#
-
 #-----------------------------------------FRAME-TABLERO--------------------------------------------------#
 
 #---------------------0-------------------------------#
@@ -177,7 +200,7 @@ button_0 = ctk.CTkButton(numeros_frame,
                          hover_color="green", 
                          border_width=2, 
                          border_color="black", font=("Arial", 20),
-                         command=lambda: posicionar_ficha(button_0))
+                         command=lambda: posicionar_ficha(button_0, numeros_frame))
 button_0.grid(row=0, column=0, columnspan=3, sticky="nswe")
 
 #--------numeros (sin el 0)---------------------#
@@ -194,7 +217,8 @@ for i in range(1, 37):
                            hover_color=color, 
                            border_width=2, 
                            border_color="black",
-                           font=("Arial", 20))
+                           font=("Arial", 20),
+                           command=lambda b=i: posicionar_ficha(buttons[b], numeros_frame))
     button.grid(row=fila_inicio, column=columna_inicio,padx=0, pady=0, sticky="nswe")
 
     diccionarioDeApuestas[str(i)] = none_36
@@ -216,42 +240,49 @@ for i in range(3):
                            hover_color="green", 
                            border_width=2, 
                            border_color="black",
-                           font=("Arial", 20))
+                           font=("Arial", 20),
+                           command=lambda b=i: posicionar_ficha(botones_columna[b], numeros_frame))
     button.grid(row=13, column=i,padx=0, pady=0, sticky="nswe")
     diccionarioDeApuestas["2 TO 1"] = none_3
     botones_columna.append(button)
 
 
 #----------fila-apuestas-----------------------------------------------------------------------------------------------------------------------------
-button_1_18 = ctk.CTkButton(apuestas_frame, text="1\n\nT\nO\n\n18", text_color="white", fg_color="green", hover_color="green", width=50, height=200, border_width=1, border_color="black", font=("Arial", 17))
+button_1_18 = ctk.CTkButton(apuestas_frame, text="1\n\nT\nO\n\n18", text_color="white", fg_color="green", hover_color="green", width=50, height=200, border_width=1, border_color="black", font=("Arial", 17), command=lambda: posicionar_ficha(button_1_18, apuestas_frame))
 button_1_18.grid(row=1, column=0, rowspan=2, padx=0, pady=0, sticky="nsew")
 
-button_even = ctk.CTkButton(apuestas_frame, text="E\nV\nE\nN", text_color="white", fg_color="green", hover_color="green", width=50, height=200, border_width=1, border_color="black", font=("Arial", 20))
+button_even = ctk.CTkButton(apuestas_frame, text="E\nV\nE\nN", text_color="white", fg_color="green", hover_color="green", width=50, height=200, border_width=1, border_color="black", font=("Arial", 20), command=lambda: posicionar_ficha(button_even, apuestas_frame))
 button_even.grid(row=3, column=0, rowspan=2, padx=0, pady=0, sticky="nsew")
 
-button_red = ctk.CTkButton(apuestas_frame, text="RED", text_color="red", fg_color="red", hover_color="red", width=50, height=200, border_width=1, border_color="black", font=("Arial", 20))
+button_red = ctk.CTkButton(apuestas_frame, text="RED", text_color="red", fg_color="red", hover_color="red", width=50, height=200, border_width=1, border_color="black", font=("Arial", 20), command=lambda: posicionar_ficha(button_red, apuestas_frame))
 button_red.grid(row=5, column=0, rowspan=2, padx=0, pady=0, sticky="nsew")
 
-button_black = ctk.CTkButton(apuestas_frame, text="BLACK", text_color="black", fg_color="black", hover_color="black", width=50, height=200, border_width=1, border_color="black", font=("Arial", 20))
+button_black = ctk.CTkButton(apuestas_frame, text="BLACK", text_color="black", fg_color="black", hover_color="black", width=50, height=200, border_width=1, border_color="black", font=("Arial", 20), command=lambda: posicionar_ficha(button_black, apuestas_frame))
 button_black.grid(row=7, column=0, rowspan=2, padx=0, pady=0, sticky="nsew")
 
-button_odd = ctk.CTkButton(apuestas_frame, text="O\nD\nD", text_color="white", fg_color="green", hover_color="green", width=50, height=200, border_width=1, border_color="black", font=("Arial", 20))
+button_odd = ctk.CTkButton(apuestas_frame, text="O\nD\nD", text_color="white", fg_color="green", hover_color="green", width=50, height=200, border_width=1, border_color="black", font=("Arial", 20), command=lambda: posicionar_ficha(button_odd, apuestas_frame))
 button_odd.grid(row=9, column=0, rowspan=2, padx=0, pady=0, sticky="nsew")
 
-button_19_36 = ctk.CTkButton(apuestas_frame, text="19\n\nT\nO\n\n36", text_color="white", fg_color="green", hover_color="green", width=50, height=200, border_width=1, border_color="black", font=("Arial", 17))
+button_19_36 = ctk.CTkButton(apuestas_frame, text="19\n\nT\nO\n\n36", text_color="white", fg_color="green", hover_color="green", width=50, height=200, border_width=1, border_color="black", font=("Arial", 17), command=lambda: posicionar_ficha(button_19_36, apuestas_frame))
 button_19_36.grid(row=11, column=0, rowspan=2, padx=0, pady=0, sticky="nsew")
 
 #-----------fila-mitades--------------------------------------------------------------------------------------------------------------------------#
-button_1st_12 = ctk.CTkButton(apuestas_frame, text="1\nS\nT\n\n12", text_color="white", fg_color="green", hover_color="green", width=50, height=200, border_width=1, border_color="black", font=("Arial", 20))
+button_1st_12 = ctk.CTkButton(apuestas_frame, text="1\nS\nT\n\n12", text_color="white", fg_color="green", hover_color="green", width=50, height=200, border_width=1, border_color="black", font=("Arial", 20), command=lambda: posicionar_ficha(button_1st_12, apuestas_frame))
 button_1st_12.grid(row=1, column=1, rowspan=4, padx=0, pady=0, sticky="nsew")
 
-button_2nd_12 = ctk.CTkButton(apuestas_frame, text="2\nN\nD\n\n12", text_color="white", fg_color="green", hover_color="green", width=50, height=200, border_width=1, border_color="black", font=("Arial", 20))
+button_2nd_12 = ctk.CTkButton(apuestas_frame, text="2\nN\nD\n\n12", text_color="white", fg_color="green", hover_color="green", width=50, height=200, border_width=1, border_color="black", font=("Arial", 20), command=lambda: posicionar_ficha(button_2nd_12, apuestas_frame))
 button_2nd_12.grid(row=5, column=1, rowspan=4, padx=0, pady=0, sticky="nsew")
 
-button_3rd_12 = ctk.CTkButton(apuestas_frame, text="3\nR\nD\n\n12", text_color="white", fg_color="green", hover_color="green", width=50, height=200, border_width=1, border_color="black", font=("Arial", 20))
+button_3rd_12 = ctk.CTkButton(apuestas_frame, text="3\nR\nD\n\n12", text_color="white", fg_color="green", hover_color="green", width=50, height=200, border_width=1, border_color="black", font=("Arial", 20), command=lambda: posicionar_ficha(button_3rd_12, apuestas_frame))
 button_3rd_12.grid(row=9, column=1, rowspan=4, padx=0, pady=0, sticky="nsew")
 
 #--------------------------------------------FRAME-OPCIONES---------------------------------------------------------------------------------------------------------------------------#
+
+button_clear_last = ctk.CTkButton(opciones_frame, text="CLEAR", text_color="white", fg_color="black", width=190, command=lambda: clear_apuesta(True))
+button_clear_last.place(relx=0.34, rely=0.85, anchor="center")
+
+button_clear_all = ctk.CTkButton(opciones_frame, text="CLEAR ALL", text_color="white", fg_color="black", width=190, command=lambda: clear_apuesta(False))
+button_clear_all.place(relx=0.34, rely=0.89, anchor="center")
 
 button_apuesta_text = ctk.CTkButton(opciones_frame, text="BETS", text_color="white", fg_color="black",hover_color="black", width=20)
 button_apuesta_text.place(relx=0.17, rely=0.93, anchor="center")
