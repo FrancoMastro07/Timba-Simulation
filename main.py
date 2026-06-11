@@ -10,7 +10,6 @@ app = ctk.CTk()
 app.title("Timba")
 app.geometry("1200x800")
 
-
 buttons = {}            #clave=numero, valor=boton, son los 36 numeros
 botones_columna = []      #indice=columna, [indice]=boton, son los 3 de abajo
 
@@ -63,7 +62,7 @@ def spin():                            #para hacer la tirada
     global numero_actual
     global resultados
 
-    if(apuesta>saldo or saldo==0):           #falta apuesta==0
+    if(apuesta>saldo or saldo==0 or apuesta==0):          
         print("flaco...")
         return 
 
@@ -73,6 +72,7 @@ def spin():                            #para hacer la tirada
     numero_actual = random.randint(0, 36)
     time.sleep(3)
     button_numero.configure(text=str(numero_actual))
+    
     if(len(resultados)<11):
         button_resultados.configure(text=resultadosATexto(resultados))
     else:
@@ -88,7 +88,7 @@ def elegir_ficha(boton, color_borde, nombre):
     ficha_actual = (nombre, boton)
     boton.configure(border_color=color_borde)
 
-def posicionar_ficha(boton, frame):            #---------ARREGLAR-------------
+def posicionar_ficha(boton, frame):            
     
     global ficha_actual
     global apuesta
@@ -192,16 +192,28 @@ for c in range(2):
 #......................................................................BOTONES........................................................................................................#
 #-----------------------------------------FRAME-TABLERO--------------------------------------------------#
 
-#---------------------0-------------------------------#
-button_0 = ctk.CTkButton(numeros_frame, 
-                         text="0", 
+def crear_botones_numeros(txt, fg, hv, comm_lamb, fila, columna, columna_extend):
+
+    global buttons
+
+    button = ctk.CTkButton(numeros_frame, 
+                         text=txt, 
                          text_color="white", 
-                         fg_color="green", 
-                         hover_color="green", 
+                         fg_color=fg, 
+                         hover_color=hv, 
                          border_width=2, 
-                         border_color="black", font=("Arial", 20),
-                         command=lambda: posicionar_ficha(button_0, numeros_frame))
-button_0.grid(row=0, column=0, columnspan=3, sticky="nswe")
+                         border_color="black", 
+                         font=("Arial", 20),
+                         command=comm_lamb)
+    
+    if(txt=="0"):
+        button.configure(command=lambda: posicionar_ficha(button, numeros_frame))
+
+    button.grid(row=fila, column=columna, columnspan=columna_extend, sticky="nswe")
+    return button
+
+#---------------------0-------------------------------#
+button_0 = crear_botones_numeros("0", "green", "green", None, 0, 0, 3)
 
 #--------numeros (sin el 0)---------------------#
 
@@ -210,16 +222,7 @@ columna_inicio = 0
 
 for i in range(1, 37):
     color = esPar(i)
-    button = ctk.CTkButton(numeros_frame, 
-                           text=str(i), 
-                           text_color="white", 
-                           fg_color=color, 
-                           hover_color=color, 
-                           border_width=2, 
-                           border_color="black",
-                           font=("Arial", 20),
-                           command=lambda b=i: posicionar_ficha(buttons[b], numeros_frame))
-    button.grid(row=fila_inicio, column=columna_inicio,padx=0, pady=0, sticky="nswe")
+    button = crear_botones_numeros(str(i), color, color, lambda b=i: posicionar_ficha(buttons[b], numeros_frame), fila_inicio, columna_inicio, 1)
 
     diccionarioDeApuestas[str(i)] = none_36
 
@@ -233,48 +236,46 @@ for i in range(1, 37):
 #---------fila-2 to 1----------------------#
 
 for i in range(3):
-    button = ctk.CTkButton(numeros_frame, 
-                           text="2 TO 1", 
-                           text_color="white", 
-                           fg_color="green", 
-                           hover_color="green", 
-                           border_width=2, 
-                           border_color="black",
-                           font=("Arial", 20),
-                           command=lambda b=i: posicionar_ficha(botones_columna[b], numeros_frame))
-    button.grid(row=13, column=i,padx=0, pady=0, sticky="nswe")
+    button = crear_botones_numeros("2 TO 1", "green", "green", lambda b=i: posicionar_ficha(botones_columna[b], numeros_frame), 13, i, 1)
     diccionarioDeApuestas["2 TO 1"] = none_3
     botones_columna.append(button)
 
 
-#----------fila-apuestas-----------------------------------------------------------------------------------------------------------------------------
-button_1_18 = ctk.CTkButton(apuestas_frame, text="1\n\nT\nO\n\n18", text_color="white", fg_color="green", hover_color="green", width=50, height=200, border_width=1, border_color="black", font=("Arial", 17), command=lambda: posicionar_ficha(button_1_18, apuestas_frame))
-button_1_18.grid(row=1, column=0, rowspan=2, padx=0, pady=0, sticky="nsew")
+#----------fila-apuestas-y-mitades---------------------------------------------------------------------------------------------------------------------------
 
-button_even = ctk.CTkButton(apuestas_frame, text="E\nV\nE\nN", text_color="white", fg_color="green", hover_color="green", width=50, height=200, border_width=1, border_color="black", font=("Arial", 20), command=lambda: posicionar_ficha(button_even, apuestas_frame))
-button_even.grid(row=3, column=0, rowspan=2, padx=0, pady=0, sticky="nsew")
+def crear_boton_fila_apuestas(txt, txt_color, fg, hv, f, fila, columna, fila_extend):
+    button = ctk.CTkButton(apuestas_frame,
+                         text=txt,
+                         text_color=txt_color,
+                         fg_color=fg,
+                         hover_color=hv,
+                         width=50,
+                         height=200,
+                         border_width=1,
+                         border_color="black",
+                         font=("Arial", f))
+    button.configure(command=lambda: posicionar_ficha(button, apuestas_frame))
+    button.grid(row=fila, column=columna, rowspan=fila_extend, padx=0, pady=0, sticky="nsew")
+    return button
 
-button_red = ctk.CTkButton(apuestas_frame, text="RED", text_color="red", fg_color="red", hover_color="red", width=50, height=200, border_width=1, border_color="black", font=("Arial", 20), command=lambda: posicionar_ficha(button_red, apuestas_frame))
-button_red.grid(row=5, column=0, rowspan=2, padx=0, pady=0, sticky="nsew")
 
-button_black = ctk.CTkButton(apuestas_frame, text="BLACK", text_color="black", fg_color="black", hover_color="black", width=50, height=200, border_width=1, border_color="black", font=("Arial", 20), command=lambda: posicionar_ficha(button_black, apuestas_frame))
-button_black.grid(row=7, column=0, rowspan=2, padx=0, pady=0, sticky="nsew")
+button_1_18 = crear_boton_fila_apuestas("1\n\nT\nO\n\n18", "white", "green", "green", 17, 1, 0, 2)
 
-button_odd = ctk.CTkButton(apuestas_frame, text="O\nD\nD", text_color="white", fg_color="green", hover_color="green", width=50, height=200, border_width=1, border_color="black", font=("Arial", 20), command=lambda: posicionar_ficha(button_odd, apuestas_frame))
-button_odd.grid(row=9, column=0, rowspan=2, padx=0, pady=0, sticky="nsew")
+button_even = crear_boton_fila_apuestas("E\nV\nE\nN", "white", "green", "green", 20, 3, 0, 2)
 
-button_19_36 = ctk.CTkButton(apuestas_frame, text="19\n\nT\nO\n\n36", text_color="white", fg_color="green", hover_color="green", width=50, height=200, border_width=1, border_color="black", font=("Arial", 17), command=lambda: posicionar_ficha(button_19_36, apuestas_frame))
-button_19_36.grid(row=11, column=0, rowspan=2, padx=0, pady=0, sticky="nsew")
+button_red = crear_boton_fila_apuestas("RED", "red", "red", "red", 20, 5, 0, 2)
 
-#-----------fila-mitades--------------------------------------------------------------------------------------------------------------------------#
-button_1st_12 = ctk.CTkButton(apuestas_frame, text="1\nS\nT\n\n12", text_color="white", fg_color="green", hover_color="green", width=50, height=200, border_width=1, border_color="black", font=("Arial", 20), command=lambda: posicionar_ficha(button_1st_12, apuestas_frame))
-button_1st_12.grid(row=1, column=1, rowspan=4, padx=0, pady=0, sticky="nsew")
+button_black = crear_boton_fila_apuestas("BLACK", "black", "black", "black", 20, 7, 0, 2)
 
-button_2nd_12 = ctk.CTkButton(apuestas_frame, text="2\nN\nD\n\n12", text_color="white", fg_color="green", hover_color="green", width=50, height=200, border_width=1, border_color="black", font=("Arial", 20), command=lambda: posicionar_ficha(button_2nd_12, apuestas_frame))
-button_2nd_12.grid(row=5, column=1, rowspan=4, padx=0, pady=0, sticky="nsew")
+button_odd = crear_boton_fila_apuestas("O\nD\nD", "white", "green", "green", 20, 9, 0, 2)
 
-button_3rd_12 = ctk.CTkButton(apuestas_frame, text="3\nR\nD\n\n12", text_color="white", fg_color="green", hover_color="green", width=50, height=200, border_width=1, border_color="black", font=("Arial", 20), command=lambda: posicionar_ficha(button_3rd_12, apuestas_frame))
-button_3rd_12.grid(row=9, column=1, rowspan=4, padx=0, pady=0, sticky="nsew")
+button_19_36 = crear_boton_fila_apuestas("19\n\nT\nO\n\n36", "white", "green", "green", 17, 11, 0, 2)
+
+button_1st_12 = crear_boton_fila_apuestas("1\nS\nT\n\n12", "white", "green", "green", 20, 1, 1, 4)
+
+button_2nd_12 = crear_boton_fila_apuestas("2\nN\nD\n\n12", "white", "green", "green", 20, 5, 1, 4)
+
+button_3rd_12 = crear_boton_fila_apuestas("3\nR\nD\n\n12", "white", "green", "green", 20, 9, 1, 4)
 
 #--------------------------------------------FRAME-OPCIONES---------------------------------------------------------------------------------------------------------------------------#
 
@@ -287,13 +288,13 @@ button_clear_all.place(relx=0.34, rely=0.89, anchor="center")
 button_apuesta_text = ctk.CTkButton(opciones_frame, text="BETS", text_color="white", fg_color="black",hover_color="black", width=20)
 button_apuesta_text.place(relx=0.17, rely=0.93, anchor="center")
 
-button_apuesta = ctk.CTkButton(opciones_frame, text="$ "+str(apuesta), text_color="white", fg_color="black", hover_color="black",border_width=1, border_color="black")
+button_apuesta = ctk.CTkButton(opciones_frame, text="$ "+str(apuesta), text_color="white", fg_color="black", hover_color="black", border_color="black")
 button_apuesta.place(relx=0.4, rely=0.93, anchor="center")
 
 button_saldo_text = ctk.CTkButton(opciones_frame, text="PAID", text_color="white", fg_color="black",hover_color="black", width=20)
 button_saldo_text.place(relx=0.17, rely=0.97, anchor="center")
 
-button_saldo = ctk.CTkButton(opciones_frame, text="$ "+str(saldo), text_color="white", fg_color="black", hover_color="black",border_width=1, border_color="black")
+button_saldo = ctk.CTkButton(opciones_frame, text="$ "+str(saldo), text_color="white", fg_color="black", hover_color="black", border_color="black")
 button_saldo.place(relx=0.4, rely=0.97, anchor="center")
 
 button_spin = ctk.CTkButton(opciones_frame, 
@@ -345,57 +346,27 @@ button_entry_saldo.place(relx=0.6, rely=0.07)
 
 #---------------------------------------------------------FICHAS------------------------------------------------------------------------------#
 
-ficha_celeste_png = ctk.CTkImage(light_image=Image.open("imagenes/celeste.png"), size=(70,70))
-ficha_violeta_png = ctk.CTkImage(light_image=Image.open("imagenes/violeta.png"), size=(70,70))
-ficha_roja_png = ctk.CTkImage(light_image=Image.open("imagenes/roja.png"), size=(70,70))
-ficha_amarilla_png = ctk.CTkImage(light_image=Image.open("imagenes/amarilla.png"), size=(70,70))
+def crear_ficha(nombre, command_lambda, x, y):
 
-button_celeste = ctk.CTkButton(opciones_frame, 
+    button = ctk.CTkButton(opciones_frame, 
                               text="", 
                               text_color="white", 
                               fg_color="#8B4513",
                               hover_color="#8B4513", 
-                              image=ficha_celeste_png,
+                              image=ctk.CTkImage(light_image=Image.open(nombre), size=(70,70)),
                               border_width=1, 
                               border_color="#8B4513",
                               width=30,
-                              command=lambda: elegir_ficha(button_celeste, "lightblue", "celeste"))
-button_celeste.place(relx=0.55, rely=0.12)
+                              command=command_lambda)
+    button.place(relx=x, rely=y)
+    return button
 
-button_violeta = ctk.CTkButton(opciones_frame, 
-                              text="", 
-                              text_color="white", 
-                              fg_color="#8B4513",
-                              hover_color="#8B4513", 
-                              image=ficha_violeta_png,
-                              border_width=1, 
-                              border_color="#8B4513",
-                              width=30,
-                              command=lambda: elegir_ficha(button_violeta, "purple", "violeta"))
-button_violeta.place(relx=0.76, rely=0.12)
+button_celeste = crear_ficha("imagenes/celeste.png", lambda: elegir_ficha(button_celeste, "lightblue", "celeste"), 0.55, 0.12)
 
-button_roja = ctk.CTkButton(opciones_frame, 
-                              text="", 
-                              text_color="white", 
-                              fg_color="#8B4513",
-                              hover_color="#8B4513", 
-                              image=ficha_roja_png,
-                              border_width=1, 
-                              border_color="#8B4513",
-                              width=30,
-                              command=lambda: elegir_ficha(button_roja, "red", "roja"))
-button_roja.place(relx=0.55, rely=0.22)
+button_violeta = crear_ficha("imagenes/violeta.png", lambda: elegir_ficha(button_violeta, "purple", "violeta"), 0.76, 0.12)
 
-button_amarilla = ctk.CTkButton(opciones_frame, 
-                              text="", 
-                              text_color="white", 
-                              fg_color="#8B4513",
-                              hover_color="#8B4513", 
-                              image=ficha_amarilla_png,
-                              border_width=1, 
-                              border_color="#8B4513",
-                              width=30,
-                              command=lambda: elegir_ficha(button_amarilla, "yellow", "amarilla"))
-button_amarilla.place(relx=0.76, rely=0.22)
+button_roja = crear_ficha("imagenes/roja.png", lambda: elegir_ficha(button_roja, "red", "roja"), 0.55, 0.22)
+
+button_amarilla = crear_ficha("imagenes/amarilla.png", lambda: elegir_ficha(button_amarilla, "yellow", "amarilla"), 0.76, 0.22)
 
 app.mainloop()
