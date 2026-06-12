@@ -1,7 +1,7 @@
 import time
 import random
 import customtkinter as ctk
-from funciones import rojoONegro, resultadosATexto
+from funciones import rojoONegro, resultadosATexto, obtenerNumero
 from PIL import Image
 
 #---pip install customtkinter---#
@@ -15,9 +15,19 @@ botones_columna = []      #indice=columna, [indice]=boton, son los 3 de abajo
 
 numero_actual = None     #ultimo numero que salió en la ruleta
 ficha_actual = None      #ultimo ficha usada, (nombre, boton)
+
 resultados = []       #numeros que salieron
 black = [2,4,6,8,10,11,13,15,17,20,22,24,26,28,29,31,33,35] 
 red = [1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36]
+
+ruleta_numeros = [0,32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,23,10,5,24,16,33,1,20,14,31,9,22,18,29,7,28,12,35,3,26]
+
+diccionarioRuleta = {}           #guarda por cada numero de la ruleta, la imagen si salio, y la de si no salio
+
+for numero in ruleta_numeros:
+    imagen1 = ctk.CTkImage(light_image=Image.open("imagenes/salio/"+str(numero)+".png"), size=(240,240))
+    imagen2 = ctk.CTkImage(light_image=Image.open("imagenes/no_salio/"+str(numero)+".png"), size=(240,240))
+    diccionarioRuleta[numero] = (imagen1, imagen2)
 
 none_36 = (36, 0)
 none_3 = (3, 0)
@@ -119,6 +129,35 @@ def evaluar_apuesta(nombre_apuesta, numero):     #evalua el valor conseguido con
             return evaluacion
 
     return 0
+
+def ruleta(i, espera):
+    global saldo
+    imagen = diccionarioRuleta[ruleta_numeros[i]][1]       #la imagen del numero si no salió
+    button_ruleta.configure(image=imagen)      #actualizo
+
+    if(i+1==len(ruleta_numeros)):
+        espera+=1
+        i=0
+    else:
+        i+=1
+    if(espera<2 or numero_actual!=ruleta_numeros[i]):          #si la espera se pasó, y la imagen de la ruleta es igual al numero actual, entonces la pongo y sigo
+        button_ruleta.after(50, lambda: ruleta(i, espera))
+    else:                                                                         #si terminó la animacion de la ruleta termino con la funcion spin
+        button_ruleta.configure(image=diccionarioRuleta[numero_actual][0])   
+        button_numero.configure(text=str(numero_actual))
+
+        if(len(resultados)<11):
+            button_resultados.configure(text=resultadosATexto(resultados))
+        else:
+            button_resultados.configure(text=resultadosATexto(resultados[-10:]))
+        
+        #----------evaluar-apuesta------------------------------##
+
+        for clave,valor in diccionarioDeApuestas.items():
+            if (valor[1]>0):
+                saldo += evaluar_apuesta(clave, numero_actual)
+                
+        button_saldo.configure(text="$ "+str(saldo))
     
 def spin():                            #para hacer la tirada
     global numero_actual
@@ -135,23 +174,13 @@ def spin():                            #para hacer la tirada
     #-------------sacar-numero--------------------------##
     if(numero_actual!=None):
         resultados.append(numero_actual)
+    button_numero.configure(text="")
 
     numero_actual = random.randint(0, 36)
-    time.sleep(3)
-    button_numero.configure(text=str(numero_actual))
+    #-------------------ruleta-------------------------#
     
-    if(len(resultados)<11):
-        button_resultados.configure(text=resultadosATexto(resultados))
-    else:
-        button_resultados.configure(text=resultadosATexto(resultados[-10:]))
-    
-    #----------evaluar-apuesta------------------------------##
+    ruleta(0, 0)   #indice=0, espera=0
 
-    for clave,valor in diccionarioDeApuestas.items():
-        if (valor[1]>0):
-            saldo += evaluar_apuesta(clave, numero_actual)
-            
-    button_saldo.configure(text="$ "+str(saldo))
     
 
 def elegir_ficha(boton, color_borde, nombre):
@@ -405,6 +434,19 @@ button_numero = ctk.CTkButton(opciones_frame,
                               font=("Arial", 20))
 button_numero.place(relx=0.05, rely=0.03)
 
+button_ruleta = ctk.CTkButton(opciones_frame, 
+                              text="", 
+                              text_color="#8B4513", 
+                              fg_color="#8B4513", 
+                              hover_color="#8B4513",
+                              border_width=1, 
+                              image=ctk.CTkImage(light_image=Image.open("imagenes/no_salio/0.png"), size=(240,240)),
+                              border_color="#8B4513",
+                              width=60,
+                              height=50,
+                              font=("Arial", 20))
+button_ruleta.place(relx=0.29, rely=0.03)
+
 button_resultados = ctk.CTkButton(opciones_frame, 
                               text="", 
                               text_color="white", 
@@ -418,7 +460,7 @@ button_resultados = ctk.CTkButton(opciones_frame,
 button_resultados.place(relx=0.05, rely=0.10)
 
 entry_saldo = ctk.CTkEntry(opciones_frame, placeholder_text="Meté plata...")
-entry_saldo.place(relx=0.6, rely=0.03)
+entry_saldo.place(relx=0.6, rely=0.83)
 
 button_entry_saldo = ctk.CTkButton(opciones_frame, 
                               text="Actualizar saldo", 
@@ -428,7 +470,7 @@ button_entry_saldo = ctk.CTkButton(opciones_frame,
                               border_color="grey",
                               width=140,
                               command=actualizar_saldo)
-button_entry_saldo.place(relx=0.6, rely=0.07)
+button_entry_saldo.place(relx=0.6, rely=0.87)
 
 #---------------------------------------------------------FICHAS------------------------------------------------------------------------------#
 
@@ -447,12 +489,12 @@ def crear_ficha(dir, command_lambda, x, y):
     button.place(relx=x, rely=y)
     return button
 
-button_celeste = crear_ficha("imagenes/celeste.png", lambda: elegir_ficha(button_celeste, "lightblue", "celeste"), 0.55, 0.12)
+button_celeste = crear_ficha("imagenes/fichas/celeste.png", lambda: elegir_ficha(button_celeste, "lightblue", "celeste"), 0.38, 0.35)
 
-button_violeta = crear_ficha("imagenes/violeta.png", lambda: elegir_ficha(button_violeta, "purple", "violeta"), 0.76, 0.12)
+button_violeta = crear_ficha("imagenes/fichas/violeta.png", lambda: elegir_ficha(button_violeta, "purple", "violeta"), 0.60, 0.35)
 
-button_roja = crear_ficha("imagenes/roja.png", lambda: elegir_ficha(button_roja, "red", "roja"), 0.55, 0.22)
+button_roja = crear_ficha("imagenes/fichas/roja.png", lambda: elegir_ficha(button_roja, "red", "roja"), 0.38, 0.45)
 
-button_amarilla = crear_ficha("imagenes/amarilla.png", lambda: elegir_ficha(button_amarilla, "yellow", "amarilla"), 0.76, 0.22)
+button_amarilla = crear_ficha("imagenes/fichas/amarilla.png", lambda: elegir_ficha(button_amarilla, "yellow", "amarilla"), 0.60, 0.45)
 
 app.mainloop()
