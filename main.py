@@ -1,7 +1,7 @@
 import time
 import random
 import customtkinter as ctk
-from funciones import esPar, resultadosATexto
+from funciones import rojoONegro, resultadosATexto
 from PIL import Image
 
 #---pip install customtkinter---#
@@ -16,6 +16,8 @@ botones_columna = []      #indice=columna, [indice]=boton, son los 3 de abajo
 numero_actual = None     #ultimo numero que salió en la ruleta
 ficha_actual = None      #ultimo ficha usada, (nombre, boton)
 resultados = []       #numeros que salieron
+black = [2,4,6,8,10,11,13,15,17,20,22,24,26,28,29,31,33,35] 
+red = [1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36]
 
 none_36 = (36, 0)
 none_3 = (3, 0)
@@ -30,7 +32,7 @@ diccionarioDeApuestas = {"0":none_36,
                          "O\nD\nD":none_2,
                          "19\n\nT\nO\n\n36":none_2,
                          "RED":none_2,
-                         "BLACK":none_2}              #ejemplo= diccionarioDeApuestas["36"] = (multiplicador, apuesta_actual sin multiplicador), todo str, las claves son el nombre del boton
+                         "BLACK":none_2}              #ejemplo= diccionarioDeApuestas["36"] = (multiplicador, apuesta_actual (x 10) sin multiplicador), todo str, las claves son el nombre del boton
 
 diccionarioDeFichas = {"celeste":1,      #clave=color, valor=numero_base       todos se multiplican por diez despues para saber la apuesta
                        "violeta":2,      
@@ -57,15 +59,80 @@ def actualizar_saldo():           #actualiza el saldo del paid
 
     else:
         print("Error")
+
+def evaluar_apuesta(nombre_apuesta, numero):     #evalua el valor conseguido con el numero y la apuesta hecha, NO ME GUSTA COMO QUEDÓ
+
+    cantidad_apuesta = diccionarioDeApuestas[nombre_apuesta][1] * 10  #plata apostada x 10
+    multiplicador = diccionarioDeApuestas[nombre_apuesta][0]     #multiplicador de la apuesta
+    evaluacion = cantidad_apuesta * multiplicador
+
+    if(nombre_apuesta=="1\n\nT\nO\n\n18"):    #apuesta 1 to 18
+        if(numero>=1 and numero <=18):
+            return evaluacion
+        
+    if(nombre_apuesta=="E\nV\nE\nN"):    #apuesta even
+        if(numero%2==0 and numero!=0):
+            return evaluacion
+
+    if(nombre_apuesta=="RED"):     #apuesta red
+        if(rojoONegro(numero, black, red)=="red"):
+            return evaluacion
+    
+    if(nombre_apuesta=="BLACK"):         #apuesta black
+        if(rojoONegro(numero, black, red)=="black"):
+            return evaluacion
+    
+    if(nombre_apuesta=="O\nD\nD"):        #apuesta odd
+        if(numero%2!=0 and numero!=0):
+            return evaluacion
+
+    if(nombre_apuesta=="19\n\nT\nO\n\n36"):   #apuesta 19 to 36
+        if(numero>=19 and numero<=36):
+            return evaluacion
+    
+    if(nombre_apuesta=="1\nS\nT\n\n12"):      #apuesta 1st 12
+        if(numero>=1 and numero<=12):
+            return evaluacion
+        
+    if(nombre_apuesta=="2\nN\nD\n\n12"):        #apuesta 2nd 12
+        if(numero>=13 and numero<=24):
+            return evaluacion
+
+    if(nombre_apuesta=="3\nR\nD\n\n12"):      #apuesta 3rd 12
+        if(numero>=25 and numero<=36):
+            return evaluacion
+    
+    if(nombre_apuesta.isdigit()):          #apuesta del 0 al 36
+        if(nombre_apuesta==str(numero)):
+            return evaluacion
+
+    if(nombre_apuesta=="2 TO 1 1"):      #apuesta columna 1
+        if(numero in list(range(1, 37, 3))):
+            return evaluacion
+
+    if(nombre_apuesta=="2 TO 1 2"):      #apuesta columna 2
+        if(numero in list(range(2, 37, 3))):
+            return evaluacion
+
+    if(nombre_apuesta=="2 TO 1 3"):      #apuesta columna 3
+        if(numero in list(range(3, 37, 3))):
+            return evaluacion
+
+    return 0
     
 def spin():                            #para hacer la tirada
     global numero_actual
     global resultados
+    global saldo
 
     if(apuesta>saldo or saldo==0 or apuesta==0):          
-        print("flaco...")
+        print("paga tio...")
         return 
 
+    saldo -= apuesta                                 
+    button_saldo.configure(text="$ "+str(saldo))
+
+    #-------------sacar-numero--------------------------##
     if(numero_actual!=None):
         resultados.append(numero_actual)
 
@@ -77,6 +144,15 @@ def spin():                            #para hacer la tirada
         button_resultados.configure(text=resultadosATexto(resultados))
     else:
         button_resultados.configure(text=resultadosATexto(resultados[-10:]))
+    
+    #----------evaluar-apuesta------------------------------##
+
+    for clave,valor in diccionarioDeApuestas.items():
+        if (valor[1]>0):
+            saldo += evaluar_apuesta(clave, numero_actual)
+            
+    button_saldo.configure(text="$ "+str(saldo))
+    
 
 def elegir_ficha(boton, color_borde, nombre):
 
@@ -107,14 +183,23 @@ def posicionar_ficha(boton, frame):
     button_apuesta.configure(text="$ "+str(apuesta))   #recargo la apuesta
 
     texto_boton = boton.cget("text")     #nombre de la apuesta
+    boton_info = boton.grid_info()      #info del boton
+
+    if(texto_boton=="2 TO 1"):                #ARREGLO MONUMENTAL
+        boton_columna = boton_info["column"]
+        if(boton_columna==0):
+            texto_boton = "2 TO 1 1"
+        elif(boton_columna==1):
+            texto_boton = "2 TO 1 2"
+        else:
+            texto_boton = "2 TO 1 3"
+
     boton_apuesta = diccionarioDeApuestas[texto_boton][1]     #plata puesto sobre la apuesta, None o algo anterior
     boton_ficha_texto = diccionarioDeFichas[ficha]    #texto de la ficha, es el numero
 
        
     nuevo_texto = str(int(boton_ficha_texto) + boton_apuesta)  #anterior + el nuevo
     diccionarioDeApuestas[texto_boton] = (diccionarioDeApuestas[texto_boton][0], int(nuevo_texto)) 
-
-    boton_info = boton.grid_info()      #info del boton
 
     boton_ficha = ctk.CTkButton(frame, 
                            text=nuevo_texto, 
@@ -221,7 +306,7 @@ fila_inicio = 1
 columna_inicio = 0
 
 for i in range(1, 37):
-    color = esPar(i)
+    color = rojoONegro(i, black, red)
     button = crear_botones_numeros(str(i), color, color, lambda b=i: posicionar_ficha(buttons[b], numeros_frame), fila_inicio, columna_inicio, 1)
 
     diccionarioDeApuestas[str(i)] = none_36
@@ -237,8 +322,9 @@ for i in range(1, 37):
 
 for i in range(3):
     button = crear_botones_numeros("2 TO 1", "green", "green", lambda b=i: posicionar_ficha(botones_columna[b], numeros_frame), 13, i, 1)
-    diccionarioDeApuestas["2 TO 1"] = none_3
-    botones_columna.append(button)
+    diccionarioDeApuestas["2 TO 1 "+str(i+1)] = none_3    #2 TO 1 1 = columna 1
+    botones_columna.append(button)                      #2 TO 1 2 = columna 2
+                                                       #2 TO 1 3 = columna 3
 
 
 #----------fila-apuestas-y-mitades---------------------------------------------------------------------------------------------------------------------------
@@ -346,14 +432,14 @@ button_entry_saldo.place(relx=0.6, rely=0.07)
 
 #---------------------------------------------------------FICHAS------------------------------------------------------------------------------#
 
-def crear_ficha(nombre, command_lambda, x, y):
+def crear_ficha(dir, command_lambda, x, y):
 
     button = ctk.CTkButton(opciones_frame, 
                               text="", 
                               text_color="white", 
                               fg_color="#8B4513",
                               hover_color="#8B4513", 
-                              image=ctk.CTkImage(light_image=Image.open(nombre), size=(70,70)),
+                              image=ctk.CTkImage(light_image=Image.open(dir), size=(70,70)),
                               border_width=1, 
                               border_color="#8B4513",
                               width=30,

@@ -1,8 +1,9 @@
-def esPar(n):
-    if(n % 2 == 0):
+def rojoONegro(n, black, red):
+    if(n in black):
         return "black"
-    else: 
+    if(n in red):
         return "red"
+    return "green"
     
 def resultadosATexto(lista):
     res = ""
