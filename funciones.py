@@ -11,10 +11,4 @@ def resultadosATexto(lista):
         res += str(elem)+"\n"
     return res
 
-def obtenerNumero(palabra):
-    res = ""
-    for letra in palabra:
-        if letra.isdigit():
-            res += letra
-    return res
 

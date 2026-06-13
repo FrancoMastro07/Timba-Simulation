@@ -1,20 +1,27 @@
-import time
 import random
+import pygame
 import customtkinter as ctk
-from funciones import rojoONegro, resultadosATexto, obtenerNumero
+from funciones import rojoONegro, resultadosATexto
 from PIL import Image
 
-#---pip install customtkinter---#
+#---pip install customtkinter pillow pygame---#
 
 app = ctk.CTk()
 app.title("Timba")
 app.geometry("1200x800")
+
+pygame.mixer.init()
+alarma = pygame.mixer.Sound("sonidos/alarma.wav")
+bola = pygame.mixer.Sound("sonidos/bola.wav")
+bola.set_volume(0.3)
+
 
 buttons = {}            #clave=numero, valor=boton, son los 36 numeros
 botones_columna = []      #indice=columna, [indice]=boton, son los 3 de abajo
 
 numero_actual = None     #ultimo numero que salió en la ruleta
 ficha_actual = None      #ultimo ficha usada, (nombre, boton)
+ganaste = False
 
 resultados = []       #numeros que salieron
 black = [2,4,6,8,10,11,13,15,17,20,22,24,26,28,29,31,33,35] 
@@ -72,60 +79,75 @@ def actualizar_saldo():           #actualiza el saldo del paid
 
 def evaluar_apuesta(nombre_apuesta, numero):     #evalua el valor conseguido con el numero y la apuesta hecha, NO ME GUSTA COMO QUEDÓ
 
+    global ganaste
+
     cantidad_apuesta = diccionarioDeApuestas[nombre_apuesta][1] * 10  #plata apostada x 10
     multiplicador = diccionarioDeApuestas[nombre_apuesta][0]     #multiplicador de la apuesta
     evaluacion = cantidad_apuesta * multiplicador
 
     if(nombre_apuesta=="1\n\nT\nO\n\n18"):    #apuesta 1 to 18
-        if(numero>=1 and numero <=18):
+        if(numero>=1 and numero<=18):
+            ganaste = True
             return evaluacion
         
     if(nombre_apuesta=="E\nV\nE\nN"):    #apuesta even
         if(numero%2==0 and numero!=0):
+            ganaste = True
             return evaluacion
 
     if(nombre_apuesta=="RED"):     #apuesta red
         if(rojoONegro(numero, black, red)=="red"):
+            ganaste = True
             return evaluacion
     
     if(nombre_apuesta=="BLACK"):         #apuesta black
         if(rojoONegro(numero, black, red)=="black"):
+            ganaste = True
             return evaluacion
     
     if(nombre_apuesta=="O\nD\nD"):        #apuesta odd
         if(numero%2!=0 and numero!=0):
+            ganaste = True
             return evaluacion
 
     if(nombre_apuesta=="19\n\nT\nO\n\n36"):   #apuesta 19 to 36
         if(numero>=19 and numero<=36):
+            ganaste = True
             return evaluacion
     
     if(nombre_apuesta=="1\nS\nT\n\n12"):      #apuesta 1st 12
         if(numero>=1 and numero<=12):
+            ganaste = True
             return evaluacion
         
     if(nombre_apuesta=="2\nN\nD\n\n12"):        #apuesta 2nd 12
         if(numero>=13 and numero<=24):
+            ganaste = True
             return evaluacion
 
     if(nombre_apuesta=="3\nR\nD\n\n12"):      #apuesta 3rd 12
         if(numero>=25 and numero<=36):
+            ganaste = True
             return evaluacion
     
     if(nombre_apuesta.isdigit()):          #apuesta del 0 al 36
         if(nombre_apuesta==str(numero)):
+            ganaste = True
             return evaluacion
 
     if(nombre_apuesta=="2 TO 1 1"):      #apuesta columna 1
         if(numero in list(range(1, 37, 3))):
+            ganaste = True
             return evaluacion
 
     if(nombre_apuesta=="2 TO 1 2"):      #apuesta columna 2
         if(numero in list(range(2, 37, 3))):
+            ganaste = True
             return evaluacion
 
     if(nombre_apuesta=="2 TO 1 3"):      #apuesta columna 3
         if(numero in list(range(3, 37, 3))):
+            ganaste = True
             return evaluacion
 
     return 0
@@ -135,34 +157,38 @@ def ruleta(i, espera):
     imagen = diccionarioRuleta[ruleta_numeros[i]][1]       #la imagen del numero si no salió
     button_ruleta.configure(image=imagen)      #actualizo
 
+    bola.play()
+    #winsound.PlaySound("sonidos/bola.wav", winsound.SND_FILENAME | winsound.SND_ASYNC)
+
     if(i+1==len(ruleta_numeros)):
         espera+=1
         i=0
     else:
         i+=1
-    if(espera<2 or numero_actual!=ruleta_numeros[i]):          #si la espera se pasó, y la imagen de la ruleta es igual al numero actual, entonces la pongo y sigo
-        button_ruleta.after(50, lambda: ruleta(i, espera))
+    if(espera<1 or numero_actual!=ruleta_numeros[i]):          #si la espera se pasó, y la imagen de la ruleta es igual al numero actual, entonces la pongo y sigo
+        button_ruleta.after(100, lambda: ruleta(i, espera))
     else:                                                                         #si terminó la animacion de la ruleta termino con la funcion spin
         button_ruleta.configure(image=diccionarioRuleta[numero_actual][0])   
         button_numero.configure(text=str(numero_actual))
-
-        if(len(resultados)<11):
-            button_resultados.configure(text=resultadosATexto(resultados))
-        else:
-            button_resultados.configure(text=resultadosATexto(resultados[-10:]))
         
         #----------evaluar-apuesta------------------------------##
 
         for clave,valor in diccionarioDeApuestas.items():
             if (valor[1]>0):
                 saldo += evaluar_apuesta(clave, numero_actual)
-                
+        
+        if(ganaste):
+            alarma.play(maxtime=5500)
+
         button_saldo.configure(text="$ "+str(saldo))
     
 def spin():                            #para hacer la tirada
     global numero_actual
     global resultados
     global saldo
+    global ganaste
+
+    ganaste = False
 
     if(apuesta>saldo or saldo==0 or apuesta==0):          
         print("paga tio...")
@@ -177,6 +203,11 @@ def spin():                            #para hacer la tirada
     button_numero.configure(text="")
 
     numero_actual = random.randint(0, 36)
+
+    if(len(resultados)<11):
+        button_resultados.configure(text=resultadosATexto(resultados))
+    else:
+        button_resultados.configure(text=resultadosATexto(resultados[-10:]))
     #-------------------ruleta-------------------------#
     
     ruleta(0, 0)   #indice=0, espera=0
